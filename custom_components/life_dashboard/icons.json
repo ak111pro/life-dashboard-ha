@@ -1,6 +1,15 @@
 {
   "entity": {
     "sensor": {
+      "last_workout": {
+        "default": "mdi:run"
+      },
+      "exercise_today": {
+        "default": "mdi:run-fast"
+      },
+      "exercise_yesterday": {
+        "default": "mdi:run-fast"
+      },
       "app_screen_time": {
         "default": "mdi:application"
       }

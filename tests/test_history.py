@@ -535,7 +535,7 @@ def test_a_test_ping_changes_nothing() -> None:
         tz=_amsterdam(),
     )
     assert change.is_empty
-    assert ledger.to_dict() == {"days": {}, "sessions": {}, "hours": {}}
+    assert ledger.to_dict() == {"days": {}, "sessions": {}, "hours": {}, "workouts": {}}
 
 
 def test_bad_records_are_skipped_not_fatal() -> None:

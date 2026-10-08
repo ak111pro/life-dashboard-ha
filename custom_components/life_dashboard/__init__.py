@@ -16,25 +16,35 @@ import contextlib
 import json
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import voluptuous as vol
 from aiohttp import web
 from homeassistant.components import webhook
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from .apps import AppRoster
 from .apps import async_remove_store as async_remove_apps
-from .const import CONF_CLOUDHOOK_URL, CONF_SECRET, CONF_WEBHOOK_ID, DOMAIN
+from .const import (
+    CONF_CLOUDHOOK_URL,
+    CONF_MIN_WORKOUT_MINUTES,
+    CONF_SECRET,
+    CONF_WEBHOOK_ID,
+    DEFAULT_MIN_WORKOUT_MINUTES,
+    DOMAIN,
+)
 from .payload import (
+    KEY_EXERCISE_TODAY,
     KEY_SCREEN_TIME_APPS,
     SIGNATURE_HEADER,
     SensorUpdate,
@@ -46,6 +56,7 @@ from .payload import (
 )
 from .statistics import HistoryWriter
 from .statistics import async_remove_store as async_remove_history
+from .workouts import day_updates, last_workout_update, stored_workouts
 from .writeback import BACKFILL_DEFAULT_DAYS, BACKFILL_MAX_DAYS, WritebackManager
 from .writeback import async_remove_store as async_remove_writeback
 from .writeback_queue import WRITEBACK_TYPES
@@ -177,7 +188,47 @@ async def async_setup_entry(hass: HomeAssistant, entry: LifeDashboardConfigEntry
     entry.async_on_unload(lambda: webhook.async_unregister(hass, entry.data[CONF_WEBHOOK_ID]))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # The exercise sensors are read from the workouts the ledger kept, so they are right
+    # after a restart and with the option just changed, and they move on to the new day at
+    # midnight rather than at the next sync.
+    async_publish_exercise(hass, entry)
+
+    @callback
+    def _new_day(_now: datetime) -> None:
+        async_publish_exercise(hass, entry)
+
+    entry.async_on_unload(async_track_time_change(hass, _new_day, hour=0, minute=0, second=5))
     return True
+
+
+def min_workout_minutes(entry: ConfigEntry) -> int:
+    """The shortest workout the exercise sensors count, in minutes."""
+    return int(entry.options.get(CONF_MIN_WORKOUT_MINUTES, DEFAULT_MIN_WORKOUT_MINUTES))
+
+
+@callback
+def async_publish_exercise(hass: HomeAssistant, entry: LifeDashboardConfigEntry) -> None:
+    """Send Exercise today and Exercise yesterday as of now, from the kept workouts.
+
+    A phone that never sent a workout gets no sensors; once they exist they are kept up
+    to date also when nothing is left to count, so a quiet day reads 0 rather than the
+    day before.
+    """
+    runtime = entry.runtime_data
+    if runtime.history is None:
+        return
+    workouts = stored_workouts(runtime.history.ledger.workouts)
+    if not workouts and KEY_EXERCISE_TODAY not in runtime.latest:
+        return
+    for update in day_updates(
+        workouts,
+        now=dt_util.utcnow(),
+        tz=dt_util.get_default_time_zone(),
+        min_minutes=min_workout_minutes(entry),
+    ):
+        if runtime.apply(update):
+            async_dispatcher_send(hass, signal_update(entry.entry_id), update)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: LifeDashboardConfigEntry) -> bool:
@@ -250,7 +301,15 @@ def _make_handler(entry: LifeDashboardConfigEntry):
         # its signature included: a bug anywhere in here must be a 400, not the
         # silent 200 the app would take as delivered.
         try:
-            updates = parse_payload(data, tz=dt_util.get_default_time_zone())
+            tz = dt_util.get_default_time_zone()
+            updates = parse_payload(data, tz=tz)
+            # The newest workout of the payload; the day sums follow once the ledger
+            # has taken the payload in.
+            last_workout = last_workout_update(
+                data.get("exercise"), tz=tz, min_minutes=min_workout_minutes(entry)
+            )
+            if last_workout is not None and data.get("test") is not True:
+                updates.append(last_workout)
             accepted = [update for update in updates if runtime.apply(update)]
 
             if (version := data.get("app_version")) and version != runtime.app_version:
@@ -263,7 +322,9 @@ def _make_handler(entry: LifeDashboardConfigEntry):
             # History goes to long-term statistics, where a backfill can land on the
             # days it came from.
             if runtime.history is not None:
-                runtime.history.async_apply(data)
+                change = runtime.history.async_apply(data)
+                if change.workouts:
+                    async_publish_exercise(hass, entry)
 
             # What the phone confirmed and refused, then what waits for it. Its own
             # try inside this one: a bug in the direction to the phone must not turn

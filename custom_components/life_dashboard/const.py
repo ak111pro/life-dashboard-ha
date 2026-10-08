@@ -26,3 +26,7 @@ DEFAULT_NAME: Final = "Life Dashboard"
 # Shown as the device manufacturer and model.
 MANUFACTURER: Final = "owen282000"
 MODEL: Final = "Life Dashboard Companion"
+
+# Config entry options.
+CONF_MIN_WORKOUT_MINUTES: Final = "min_workout_minutes"
+DEFAULT_MIN_WORKOUT_MINUTES: Final = 0

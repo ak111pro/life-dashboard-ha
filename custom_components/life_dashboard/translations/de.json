@@ -1,0 +1,91 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "min_workout_minutes": "Kürzestes Training (Minuten)"
+        },
+        "data_description": {
+          "min_workout_minutes": "Trainings, die kürzer sind, zählen weder bei „Letztes Training“ noch bei „Training heute“ und „Training gestern“, zum Beispiel ein kurzer Spaziergang, den das Handy selbst erkannt hat. 0 zählt jedes Training. Die Statistik für Training bleibt unverändert."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_workout": {
+        "name": "Letztes Training",
+        "state": {
+          "other": "Sonstiges Training",
+          "badminton": "Badminton",
+          "baseball": "Baseball",
+          "basketball": "Basketball",
+          "biking": "Radfahren",
+          "biking_stationary": "Heimtrainer",
+          "boot_camp": "Bootcamp",
+          "boxing": "Boxen",
+          "calisthenics": "Calisthenics",
+          "cricket": "Cricket",
+          "dancing": "Tanzen",
+          "elliptical": "Crosstrainer",
+          "exercise_class": "Fitnesskurs",
+          "fencing": "Fechten",
+          "american_football": "American Football",
+          "australian_football": "Australian Football",
+          "frisbee_disc": "Frisbee",
+          "golf": "Golf",
+          "guided_breathing": "Geführtes Atmen",
+          "gymnastics": "Turnen",
+          "handball": "Handball",
+          "hiit": "HIIT",
+          "hiking": "Wandern",
+          "ice_hockey": "Eishockey",
+          "ice_skating": "Eislaufen",
+          "martial_arts": "Kampfsport",
+          "paddling": "Paddeln",
+          "paragliding": "Gleitschirmfliegen",
+          "pilates": "Pilates",
+          "racquetball": "Racquetball",
+          "rock_climbing": "Klettern",
+          "roller_hockey": "Rollhockey",
+          "rowing": "Rudern",
+          "rowing_machine": "Rudergerät",
+          "rugby": "Rugby",
+          "running": "Laufen",
+          "running_treadmill": "Laufband",
+          "sailing": "Segeln",
+          "scuba_diving": "Tauchen",
+          "skating": "Skaten",
+          "skiing": "Skifahren",
+          "snowboarding": "Snowboarden",
+          "snowshoeing": "Schneeschuhwandern",
+          "soccer": "Fußball",
+          "softball": "Softball",
+          "squash": "Squash",
+          "stair_climbing": "Treppensteigen",
+          "stair_climbing_machine": "Stepper",
+          "strength_training": "Krafttraining",
+          "stretching": "Dehnen",
+          "surfing": "Surfen",
+          "swimming_open_water": "Freiwasserschwimmen",
+          "swimming_pool": "Schwimmen im Becken",
+          "table_tennis": "Tischtennis",
+          "tennis": "Tennis",
+          "volleyball": "Volleyball",
+          "walking": "Gehen",
+          "water_polo": "Wasserball",
+          "weightlifting": "Gewichtheben",
+          "wheelchair": "Rollstuhl",
+          "yoga": "Yoga",
+          "swimming": "Schwimmen"
+        }
+      },
+      "exercise_today": {
+        "name": "Training heute"
+      },
+      "exercise_yesterday": {
+        "name": "Training gestern"
+      }
+    }
+  }
+}

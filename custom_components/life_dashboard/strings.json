@@ -45,8 +45,14 @@
   "options": {
     "step": {
       "init": {
-        "title": "Send to the phone",
+        "title": "Options",
         "description": "Choose per type of measurement which entity goes to this phone. Leave empty what should not be sent. The app decides which of these it writes to Health Connect, under Receive on its Health Connect tab. Only the Android app receives these; an iPhone ignores them. Health Connect has no record for BMI, muscle mass or visceral fat, so they are not offered here. Measurements from before this was set up are not sent; the Send history to phone button does that.",
+        "data": {
+          "min_workout_minutes": "Shortest workout (minutes)"
+        },
+        "data_description": {
+          "min_workout_minutes": "Workouts shorter than this are left out of Last workout, Exercise today and Exercise yesterday, such as a short walk the phone noticed by itself. 0 counts every workout. The exercise statistic is not affected."
+        },
         "sections": {
           "weight": {
             "name": "Weight",
@@ -222,6 +228,79 @@
       },
       "total_calories_today": {
         "name": "Total calories today"
+      },
+      "last_workout": {
+        "name": "Last workout",
+        "state": {
+          "other": "Other workout",
+          "badminton": "Badminton",
+          "baseball": "Baseball",
+          "basketball": "Basketball",
+          "biking": "Biking",
+          "biking_stationary": "Stationary biking",
+          "boot_camp": "Boot camp",
+          "boxing": "Boxing",
+          "calisthenics": "Calisthenics",
+          "cricket": "Cricket",
+          "dancing": "Dancing",
+          "elliptical": "Elliptical",
+          "exercise_class": "Exercise class",
+          "fencing": "Fencing",
+          "american_football": "American football",
+          "australian_football": "Australian football",
+          "frisbee_disc": "Frisbee",
+          "golf": "Golf",
+          "guided_breathing": "Guided breathing",
+          "gymnastics": "Gymnastics",
+          "handball": "Handball",
+          "hiit": "HIIT",
+          "hiking": "Hiking",
+          "ice_hockey": "Ice hockey",
+          "ice_skating": "Ice skating",
+          "martial_arts": "Martial arts",
+          "paddling": "Paddling",
+          "paragliding": "Paragliding",
+          "pilates": "Pilates",
+          "racquetball": "Racquetball",
+          "rock_climbing": "Rock climbing",
+          "roller_hockey": "Roller hockey",
+          "rowing": "Rowing",
+          "rowing_machine": "Rowing machine",
+          "rugby": "Rugby",
+          "running": "Running",
+          "running_treadmill": "Treadmill running",
+          "sailing": "Sailing",
+          "scuba_diving": "Scuba diving",
+          "skating": "Skating",
+          "skiing": "Skiing",
+          "snowboarding": "Snowboarding",
+          "snowshoeing": "Snowshoeing",
+          "soccer": "Soccer",
+          "softball": "Softball",
+          "squash": "Squash",
+          "stair_climbing": "Stair climbing",
+          "stair_climbing_machine": "Stair machine",
+          "strength_training": "Strength training",
+          "stretching": "Stretching",
+          "surfing": "Surfing",
+          "swimming_open_water": "Open water swimming",
+          "swimming_pool": "Pool swimming",
+          "table_tennis": "Table tennis",
+          "tennis": "Tennis",
+          "volleyball": "Volleyball",
+          "walking": "Walking",
+          "water_polo": "Water polo",
+          "weightlifting": "Weightlifting",
+          "wheelchair": "Wheelchair",
+          "yoga": "Yoga",
+          "swimming": "Swimming"
+        }
+      },
+      "exercise_today": {
+        "name": "Exercise today"
+      },
+      "exercise_yesterday": {
+        "name": "Exercise yesterday"
       },
       "screen_time_today": {
         "name": "Screen time today"

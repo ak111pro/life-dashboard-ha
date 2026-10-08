@@ -12,7 +12,8 @@ default, and the user has nothing to do for it either way.
 
 The options flow is the other direction: which entities go to this phone, one slot
 per Health Connect type in a collapsed section, validated on the entity's unit when
-saved. Saving reloads the entry so the listeners are set again.
+saved, and above them the shortest workout the exercise sensors count. Saving reloads
+the entry so the listeners are set again.
 """
 
 from __future__ import annotations
@@ -37,18 +38,24 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
 )
 from yarl import URL
 
+from . import min_workout_minutes
 from .const import (
     CONF_BASE_URL,
     CONF_CLOUDHOOK_URL,
+    CONF_MIN_WORKOUT_MINUTES,
     CONF_SECRET,
     CONF_URL_CHOICE,
     CONF_WEBHOOK_ID,
+    DEFAULT_MIN_WORKOUT_MINUTES,
     DEFAULT_NAME,
     DOMAIN,
     URL_CHOICE_CLOUD,
@@ -361,7 +368,10 @@ class LifeDashboardConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
-# --- Options: what goes to the phone --------------------------------------------
+# --- Options: workouts, and what goes to the phone -------------------------------
+
+# Three hours is longer than any workout worth leaving out, and keeps a typed number sensible.
+MAX_MIN_WORKOUT_MINUTES = 180
 
 _ROLES: dict[str, tuple[str, ...]] = {
     kind: (CONF_SYSTOLIC, CONF_DIASTOLIC) if kind == TYPE_BLOOD_PRESSURE else (CONF_ENTITY,)
@@ -379,7 +389,8 @@ def _own_entities(hass: HomeAssistant, entry: ConfigEntry) -> list[str]:
 
 
 def _options_schema(own: list[str]) -> vol.Schema:
-    """One collapsed section per type; entity pickers without a device class filter.
+    """The shortest workout, then one collapsed section per type; entity pickers without
+    a device class filter.
 
     No device class filter on purpose: a scale integration's weight may carry none,
     and a filter would hide exactly the entity the user came for. The unit is checked
@@ -391,7 +402,17 @@ def _options_schema(own: list[str]) -> vol.Schema:
     time_picker = EntitySelector(
         EntitySelectorConfig(domain="sensor", device_class="timestamp", exclude_entities=own)
     )
-    fields: dict[Any, Any] = {}
+    fields: dict[Any, Any] = {
+        vol.Optional(CONF_MIN_WORKOUT_MINUTES, default=DEFAULT_MIN_WORKOUT_MINUTES): NumberSelector(
+            NumberSelectorConfig(
+                min=0,
+                max=MAX_MIN_WORKOUT_MINUTES,
+                step=1,
+                mode=NumberSelectorMode.BOX,
+                unit_of_measurement="min",
+            )
+        )
+    }
     for kind in WRITEBACK_TYPES:
         inner: dict[Any, Any] = {vol.Optional(role): picker for role in _ROLES[kind]}
         inner[vol.Optional(CONF_TIME_ENTITY)] = time_picker
@@ -486,7 +507,7 @@ def _validate_mapping(
 
 
 class WritebackOptionsFlow(OptionsFlowWithReload):
-    """Choose per type which entity goes to this phone."""
+    """Choose the shortest workout that counts, and per type which entity goes to this phone."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         own = _own_entities(self.hass, self.config_entry)
@@ -496,11 +517,23 @@ class WritebackOptionsFlow(OptionsFlowWithReload):
             mapping, errors, placeholders = _validate_mapping(self.hass, user_input, own)
             if not errors:
                 return self.async_create_entry(
-                    data={**self.config_entry.options, OPTION_WRITEBACK: mapping}
+                    data={
+                        **self.config_entry.options,
+                        CONF_MIN_WORKOUT_MINUTES: int(
+                            user_input.get(CONF_MIN_WORKOUT_MINUTES, DEFAULT_MIN_WORKOUT_MINUTES)
+                        ),
+                        OPTION_WRITEBACK: mapping,
+                    }
                 )
 
-        current = self.config_entry.options.get(OPTION_WRITEBACK)
-        suggested = user_input if user_input is not None else current
+        suggested = (
+            user_input
+            if user_input is not None
+            else {
+                CONF_MIN_WORKOUT_MINUTES: min_workout_minutes(self.config_entry),
+                **(self.config_entry.options.get(OPTION_WRITEBACK) or {}),
+            }
+        )
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(_options_schema(own), suggested),
