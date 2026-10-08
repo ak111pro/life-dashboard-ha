@@ -3,6 +3,7 @@
 Each phone is one device, with a sensor for every value it sends and long-term statistics for the past. This page lists all of them, with the attributes, the screen time sensors per app, an example dashboard and a few automations.
 
 - [What you get](#what-you-get)
+- [Exercise](#exercise)
 - [Screen time](#screen-time)
 - [A dashboard to start from](#a-dashboard-to-start-from)
 - [History](#history)
@@ -45,6 +46,16 @@ Each holds the newest record, with the time it describes as `measured_at`, the a
 | `basal_metabolic_rate` | kcal/d | | `vo2_max` | mL/min/kg |
 | `height` | m | | | |
 
+### Exercise sensors
+
+[Exercise](#exercise) below explains them.
+
+| Sensor | State | Attributes |
+|---|---|---|
+| `last_workout` | the kind of the newest workout, such as `running` | `start`, `end`, `duration_minutes`, `type_code`, `source`, `uuid`, `measured_at` |
+| `exercise_today` | min | `date`, `sessions` |
+| `exercise_yesterday` | min | `date`, `sessions` |
+
 ### Screen time sensors
 
 Android only. [Screen time](#screen-time) below explains them.
@@ -66,9 +77,53 @@ A **Test ping** in the app updates the one for its tab, which is the quickest wa
 
 ### What gets no sensor
 
-Nine of the 33 Health Connect types are event-like: workouts, meals, mindfulness sessions, sexual activity and the cycle tracking types (period, flow, intermenstrual bleeding, ovulation tests, cervical mucus). A single value can't represent them honestly, so they get no sensor. Exercise and mindfulness do count toward the [day statistics](#history).
+Eight of the 33 Health Connect types are event-like: meals, mindfulness sessions, sexual activity and the cycle tracking types (period, flow, intermenstrual bleeding, ovulation tests, cervical mucus). A single value can't represent them honestly, so they get no sensor. Mindfulness does count toward the [day statistics](#history). Workouts are event-like too, and get [sensors](#exercise) that show the last one and the sessions of the last two days.
 
 For the raw records, add a second webhook URL in the app that points at your own backend or at an automation with a webhook trigger. Neither this integration nor MQTT passes them on.
+
+## Exercise
+
+The phone sends every workout as a session: its kind, when it started and ended, and how long it was. Three sensors come out of that:
+
+| Sensor | What it holds |
+|---|---|
+| `last_workout` | The kind of the newest workout, such as `running`, `walking`, `strength_training` or `yoga`. The attributes give its `start` and `end` and `duration_minutes`, the `type_code` as the phone sent it (`56` on Android, `running` on an iPhone) and the app that wrote it as `source`. |
+| `exercise_today` | The minutes of workouts since local midnight. |
+| `exercise_yesterday` | The finished total for the day before. |
+
+Both minutes sensors carry the day as `date`, and every session of that day in `sessions`: its `type`, `start`, `end` and `minutes`, oldest first. Times are in Home Assistant's time zone.
+
+- **Kinds.** There are 62, such as `running`, `biking`, `biking_stationary`, `strength_training`, `weightlifting`, `hiit`, `yoga`, `swimming_pool`, `hiking`, `rowing_machine`, `soccer` and `other`, each with an English and a German name. Health Connect's exercise types and HealthKit's activities are mapped to the same ones. A type that has none, or one that a newer Health Connect or iOS added, reads as `other`, and `type_code` still says what it was. Health Connect has no team sports type: each sport has its own, so `soccer`, `basketball`, `volleyball` and the others are listed.
+- **Midnight.** A workout that crosses midnight counts for the part on each day: 23:30 to 00:30 is 30 minutes in `exercise_yesterday` and 30 in `exercise_today`, and the session is listed on both days with its real start and end. The two minutes sensors move on at midnight, without waiting for a sync.
+- **Two days.** The integration keeps the sessions of yesterday and today. They're stored by record ID, so a session that arrives again or is edited replaces itself. `last_workout` has no such limit: it keeps the newest workout until a newer one comes.
+- **Shortest workout.** **Configure** on the integration has **Shortest workout (minutes)**, 0 by default. A workout that is shorter is left out of all three sensors. A phone or a watch that notices a walk by itself gives sessions of 10 or 15 minutes, and a value like 20 keeps them out. The sessions are kept whole, so changing it applies to today and yesterday at once. `last_workout` follows it from the next workout on.
+- **The statistic is different.** The long-term statistic `exercise_minutes` counts every session whatever its length, and books it on the day it ended, as before. It is a day sum for a graph; the sensors say what happened on the day.
+- A phone that sends no workouts gets no exercise sensors.
+
+```yaml
+# Today's workouts in a card.
+type: markdown
+title: Today's workouts
+content: |-
+  {% for s in state_attr('sensor.owen_s_pixel_exercise_today', 'sessions') -%}
+  - {{ s.minutes }} min {{ s.type | replace('_', ' ') }}
+  {% endfor %}
+```
+
+```yaml
+# Nothing counted by evening.
+triggers:
+  - trigger: time
+    at: "19:00:00"
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.owen_s_pixel_exercise_today
+    below: 1
+actions:
+  - action: notify.mobile_app_owen_s_pixel
+    data:
+      message: "No workout today."
+```
 
 ## Screen time
 
@@ -160,7 +215,7 @@ A sensor can only hold now, so on its own a year of backfilled readings would al
 | Statistic | What it holds |
 |---|---|
 | `steps`, `distance`, `active_calories`, `total_calories` | The day's total, from the app's daily totals. |
-| `sleep_minutes`, `exercise_minutes`, `mindfulness_minutes` | The day's total, from the sessions that ended that day. |
+| `sleep_minutes`, `exercise_minutes`, `mindfulness_minutes` | The day's total, from the sessions that ended that day. A workout that crosses midnight counts whole on the day it ended here, where the [exercise sensors](#exercise) split it. |
 | `hydration_total` | Liters drunk that day. |
 | `screen_time` | Minutes on the phone that day. Every sync carries the last seven days, so a day that was still running when it was sent is corrected by the next one. |
 | `heart_rate`, `weight`, `blood_pressure_systolic`, `blood_pressure_diastolic` and every other value in the [latest reading](#latest-reading) table except sleep and the last drink | Mean, minimum and maximum per hour. |
