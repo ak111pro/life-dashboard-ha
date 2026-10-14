@@ -22,6 +22,7 @@ from datetime import UTC, date, datetime, time, tzinfo
 from typing import Any, Final
 
 from .payload import is_own_record, parse_instant
+from .workouts import keep_sessions
 
 # Day sums that come from Health Connect's own aggregate. Never summed from raw records:
 # a phone and a watch both record the same walk, and only the aggregate deduplicates that.
@@ -152,11 +153,15 @@ class Ledger:
     days: key -> "YYYY-MM-DD" -> amount, for the quantities Health Connect aggregates.
     sessions: key -> uuid -> (day, amount), so a record replaces its own contribution.
     hours: key -> ISO hour -> bucket.
+    workouts: uuid -> type, start, end and length of each exercise session of yesterday
+    and today, for the exercise sensors. Not the statistics' business: `exercise_minutes`
+    is built from `sessions`, which keeps no type and no start.
     """
 
     days: dict[str, dict[str, float]] = field(default_factory=dict)
     sessions: dict[str, dict[str, list]] = field(default_factory=dict)
     hours: dict[str, dict[str, HourBucket]] = field(default_factory=dict)
+    workouts: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -166,6 +171,7 @@ class Ledger:
                 key: {hour: bucket.to_dict() for hour, bucket in buckets.items()}
                 for key, buckets in self.hours.items()
             },
+            "workouts": self.workouts,
         }
 
     @classmethod
@@ -182,6 +188,8 @@ class Ledger:
                 key: {hour: HourBucket.from_dict(b) for hour, b in buckets.items()}
                 for key, buckets in (data.get("hours") or {}).items()
             },
+            # Absent in a ledger written before the exercise sensors.
+            workouts={u: dict(row) for u, row in (data.get("workouts") or {}).items()},
         )
 
     def day_totals(self, key: str) -> dict[str, float]:
@@ -200,9 +208,13 @@ class HistoryChange:
     day_keys: dict[str, date] = field(default_factory=dict)
     #: key -> the earliest hour whose bucket changed.
     hour_keys: dict[str, datetime] = field(default_factory=dict)
+    #: Whether the kept workouts changed. Nothing for the statistics, so it is not part of
+    #: is_empty; the exercise sensors are read from them.
+    workouts: bool = False
 
     @property
     def is_empty(self) -> bool:
+        """Whether the statistics have nothing to rewrite."""
         return not self.day_keys and not self.hour_keys
 
 
@@ -233,8 +245,13 @@ def _note_hour(changes: dict[str, datetime], key: str, hour: datetime) -> None:
         changes[key] = hour
 
 
-def apply_payload(ledger: Ledger, data: dict[str, Any], *, tz: tzinfo) -> HistoryChange:
+def apply_payload(
+    ledger: Ledger, data: dict[str, Any], *, tz: tzinfo, now: datetime | None = None
+) -> HistoryChange:
     """Fold one payload into the ledger, and report what it changed.
+
+    `now` decides which workouts are recent enough to keep; it is the moment the payload
+    arrives, which only a test has a reason to set.
 
     Never raises on a JSON object: a record it cannot read is skipped, exactly as the
     sensor parsing does, because one bad record must not cost a whole backfill window.
@@ -249,8 +266,9 @@ def apply_payload(ledger: Ledger, data: dict[str, Any], *, tz: tzinfo) -> Histor
     _apply_screen_time(ledger, data, day_changes)
     _apply_sessions(ledger, data, tz, day_changes)
     _apply_measured(ledger, data, hour_changes)
+    workouts = keep_sessions(ledger.workouts, data, now=now or datetime.now(UTC), tz=tz)
 
-    return HistoryChange(day_keys=day_changes, hour_keys=hour_changes)
+    return HistoryChange(day_keys=day_changes, hour_keys=hour_changes, workouts=workouts)
 
 
 def _apply_daily_totals(ledger: Ledger, data: dict[str, Any], changes: dict[str, date]) -> None:

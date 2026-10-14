@@ -69,6 +69,11 @@ _PAYLOAD_ATTRIBUTES = frozenset(
         "backfill",
         "record_count",
         "device",
+        "start",
+        "end",
+        "duration_minutes",
+        "type_code",
+        "sessions",
     }
 )
 
@@ -156,6 +161,7 @@ class LifeDashboardSensor(RestoreSensor):
             SensorDeviceClass(spec.device_class) if spec.device_class else None
         )
         self._attr_state_class = SensorStateClass(spec.state_class) if spec.state_class else None
+        self._attr_options = list(spec.options) if spec.options else None
         self._attr_suggested_display_precision = spec.precision
         self._attr_entity_category = EntityCategory.DIAGNOSTIC if spec.diagnostic else None
         self._attr_device_info = _device_info(entry)

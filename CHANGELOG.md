@@ -6,6 +6,37 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Workout sensors. **Last workout** holds the kind of the newest workout, such as running,
+  walking, strength training or yoga, with its `start`, `end`, `duration_minutes`, the
+  `type_code` the phone sent and the app that wrote it as `source`. **Exercise today** and
+  **Exercise yesterday** hold the minutes of the day, with every session of that day as the
+  `sessions` attribute: its kind, start, end and minutes. Time covered by more than one session,
+  such as the same run written by the phone and the watch, counts once, and a workout deleted
+  on the phone, or replaced by an edit on an iPhone, no longer counts. The Android app sends the kind as
+  a Health Connect exercise type number and the iOS app as a name; both end up as one of
+  62 kinds with a name in English and in German, and a type this integration doesn't know
+  reads as other, with the number still in `type_code`. A workout that crosses midnight
+  counts for the part on each day, so a run from 23:30 to 00:30 is half an hour on both.
+  The day sensors move on at midnight without waiting for a sync. Like the other sensors,
+  they come with the first workout the phone sends. Contributed by @ak111pro in #13, a first contribution to the project.
+- **Shortest workout (minutes)** under **Configure**, 0 by default. Workouts that are
+  shorter are left out of the three sensors, which is how you keep the short walks the
+  phone notices by itself out of them. Changing it takes effect at once for the two day
+  sensors, because the sessions are kept whole; Last workout follows it from the next workout
+  on. The `exercise_minutes` statistic doesn't follow it and still
+  counts every session, on the day it ended.
+- The ledger keeps the sessions of yesterday and today (their kind, start, end and length,
+  under their record ID, so a repeat or an edit replaces itself) for the day sensors. It is
+  stored as version 1.2: a ledger written by 0.9.0 is taken over with everything in it and
+  starts with no sessions, and a release before this one still reads the file.
+- Diagnostics count the kept workouts, never what they were.
+
+### Changed
+
+- **Configure** is titled Options now, as it holds more than the measurements for the phone.
+
 ## [0.9.0] - 2026-10-04
 
 ### Added

@@ -87,7 +87,7 @@ async def test_a_weight_mapping_is_saved_and_the_entry_reloads(
     result = await _submit(hass, entry, _form(weight={"entity": SCALE}))
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {"writeback": {"weight": {"entity": SCALE}}}
+    assert entry.options == {"min_workout_minutes": 0, "writeback": {"weight": {"entity": SCALE}}}
     assert entry.state is ConfigEntryState.LOADED
     # The reload set the listeners: the manager knows the mapping.
     assert entry.runtime_data.writeback.configured == ["weight"]
@@ -149,7 +149,7 @@ async def test_clearing_every_slot_sends_nothing(
     await _submit(hass, entry, _form(weight={"entity": SCALE}))
     result = await _submit(hass, entry, _form())
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {"writeback": {}}
+    assert entry.options == {"min_workout_minutes": 0, "writeback": {}}
     assert entry.runtime_data.writeback.configured == []
 
 
@@ -166,6 +166,8 @@ async def test_the_form_suggests_the_current_mapping(
     assert entity_marker.description == {"suggested_value": SCALE}
     # Every section is collapsed: the screen is "open Weight, pick, save".
     for marker, value in result["data_schema"].schema.items():
+        if marker == "min_workout_minutes":
+            continue
         assert value.options == {"collapsed": True}, marker
 
 

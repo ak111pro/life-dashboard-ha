@@ -3,9 +3,9 @@
 Settings > Devices & services > Life Dashboard > three dots > Download diagnostics.
 The secret and the webhook id are redacted; sensor values are not included at all,
 only which sensors exist and when each was last measured, how many apps have a sensor
-of their own but not which, how much history the ledger holds per statistic, and for
-the readings that go to the phone which entities are mapped and how many wait or were
-written, never a value or a measured moment.
+of their own but not which, how much history the ledger holds per statistic and how many
+workouts it keeps, and for the readings that go to the phone which entities are mapped and
+how many wait or were written, never a value or a measured moment.
 """
 
 from __future__ import annotations
@@ -57,6 +57,8 @@ async def async_get_config_entry_diagnostics(
             "hours": {key: span(hours) for key, hours in sorted(ledger.hours.items())}
             if ledger
             else {},
+            # How many workouts of yesterday and today are kept, never what they were.
+            "workouts": len(ledger.workouts) if ledger else 0,
         },
         "writeback": {
             "configured": {

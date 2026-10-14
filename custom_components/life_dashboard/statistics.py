@@ -34,6 +34,9 @@ from .payload import SENSOR_SPECS
 _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
+# 1.2 added the workouts. A minor version, because the change only adds a key: a ledger of
+# 1.1 reads as it is, and a downgrade to an earlier release still reads a 1.2 one.
+STORAGE_MINOR_VERSION = 2
 SAVE_DELAY_SECONDS = 5
 
 # Units and names for the day sums, which have no sensor to borrow from.
@@ -55,8 +58,26 @@ def statistic_id(entry: ConfigEntry, key: str) -> str:
     return f"{DOMAIN}:{entry.entry_id.lower()}_{key}"
 
 
+class _LedgerStore(Store[dict[str, Any]]):
+    """The ledger's file, which brings a ledger of an earlier minor version up to date."""
+
+    async def _async_migrate_func(
+        self, old_major_version: int, old_minor_version: int, old_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        if old_major_version == STORAGE_VERSION and old_minor_version < 2:
+            # Nothing of the days, sessions and hours changes; the workouts start empty,
+            # because the sessions kept for the statistics hold no type and no start.
+            return {**old_data, "workouts": old_data.get("workouts") or {}}
+        raise NotImplementedError
+
+
 def _store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
-    return Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}.history")
+    return _LedgerStore(
+        hass,
+        STORAGE_VERSION,
+        f"{DOMAIN}.{entry_id}.history",
+        minor_version=STORAGE_MINOR_VERSION,
+    )
 
 
 async def async_remove_store(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -99,10 +120,13 @@ class HistoryWriter:
         """Fold a payload into the ledger and import the rows it changed."""
         tz = dt_util.get_default_time_zone()
         change = apply_payload(self.ledger, data, tz=tz)
-        if change.is_empty:
+        if change.is_empty and not change.workouts:
             return change
 
         self._store.async_delay_save(self.ledger.to_dict, SAVE_DELAY_SECONDS)
+
+        if change.is_empty:
+            return change
 
         if not self.available:
             _LOGGER.debug(

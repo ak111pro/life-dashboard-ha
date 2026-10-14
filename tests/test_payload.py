@@ -28,6 +28,7 @@ from custom_components.life_dashboard.payload import (
     signature_for,
     verify_signature,
 )
+from custom_components.life_dashboard.workouts import day_updates, last_workout_update
 
 
 def _amsterdam() -> ZoneInfo:
@@ -1004,6 +1005,17 @@ def test_every_emitted_key_has_a_spec() -> None:
                 continue
             emitted.add(update.key)
             assert update.key in SENSOR_SPECS, f"no spec for {update.key}"
+
+    # The exercise sensors are made by workouts.py, from the exercise records and from the
+    # sessions the ledger keeps, and not by parse_payload.
+    now = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
+    last = last_workout_update(
+        [{"type": "56", "end_time": "2026-09-15T10:00:00Z", "duration_seconds": 600}],
+        tz=_amsterdam(),
+    )
+    for update in [last, *day_updates([], now=now, tz=_amsterdam())]:
+        emitted.add(update.key)
+        assert update.key in SENSOR_SPECS, f"no spec for {update.key}"
 
     # And the other way round: a spec nothing can emit is dead weight.
     assert set(SENSOR_SPECS) == emitted, set(SENSOR_SPECS) ^ emitted

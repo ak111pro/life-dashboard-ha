@@ -34,6 +34,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from typing import Any, Final
 
+from .workout_types import WORKOUT_TYPES
+
 SIGNATURE_HEADER: Final = "X-Signature"
 SIGNATURE_PREFIX: Final = "sha256="
 
@@ -108,6 +110,13 @@ _SYNC_KEYS: Final = frozenset({KEY_LAST_HEALTH_SYNC, KEY_LAST_SCREEN_TIME_SYNC})
 # so an app missing from a newer day reads 0 instead of keeping what it had, and the
 # ordering rule keeps one entry instead of one per package.
 KEY_SCREEN_TIME_APPS: Final = "screen_time_apps"
+
+# The exercise sensors. Last workout comes from the exercise records of a payload; the
+# two day sums come from the sessions the ledger keeps (workouts.py), so neither is made
+# by parse_payload.
+KEY_LAST_WORKOUT: Final = "last_workout"
+KEY_EXERCISE_TODAY: Final = "exercise_today"
+KEY_EXERCISE_YESTERDAY: Final = "exercise_yesterday"
 
 # State classes, as the string values Home Assistant's SensorStateClass uses.
 STATE_CLASS_MEASUREMENT: Final = "measurement"
@@ -282,6 +291,8 @@ class SensorSpec:
     state_class: str | None = None
     precision: int | None = None
     diagnostic: bool = False
+    #: The states of an enum sensor.
+    options: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -375,6 +386,11 @@ SENSOR_SPECS: Final[dict[str, SensorSpec]] = {
         # dashboard, which is not what these are.
         SensorSpec("active_calories_today", "kcal", precision=0),
         SensorSpec("total_calories_today", "kcal", precision=0),
+        # Exercise. The state of Last workout is the kind of workout, from a list, so it
+        # is an enum; the day sums are minutes like the screen time ones.
+        SensorSpec(KEY_LAST_WORKOUT, None, "enum", options=WORKOUT_TYPES),
+        SensorSpec(KEY_EXERCISE_TODAY, "min", "duration", precision=0),
+        SensorSpec(KEY_EXERCISE_YESTERDAY, "min", "duration", precision=0),
         # Screen time.
         SensorSpec("screen_time_today", "min", "duration", precision=0),
         SensorSpec("screen_time_yesterday", "min", "duration", precision=0),
