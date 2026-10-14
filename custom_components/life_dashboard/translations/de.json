@@ -1,18 +1,234 @@
 {
+  "config": {
+    "step": {
+      "user": {
+        "title": "Telefon hinzufügen",
+        "description": "Das Telefon sendet an die Adresse unten. Sie ist mit der Adresse vorausgefüllt, die dein Browser gerade verwendet. Ändere sie, wenn das Telefon eine andere verwenden soll: die Adresse in deinem Heimnetz, um nur zu Hause zu synchronisieren, oder deine öffentliche Adresse, um von überall zu synchronisieren.",
+        "data": {
+          "name": "Name",
+          "base_url": "Home-Assistant-Adresse",
+          "use_cloud": "Stattdessen Home Assistant Cloud verwenden"
+        },
+        "data_description": {
+          "name": "Wird zum Gerätenamen. Lohnt sich, wenn es mehr als ein Telefon im Haushalt gibt.",
+          "base_url": "Nur die Adresse, ohne /api/webhook. Du kannst sie später ändern, ohne neu zu koppeln.",
+          "use_cloud": "Erstellt einen Cloudhook, damit das Telefon ohne Portweiterleitung von überall synchronisiert. Die Adresse oben wird dann nicht verwendet."
+        }
+      },
+      "reconfigure": {
+        "title": "Life Dashboard",
+        "description": "{layout}\n\n{by_hand}",
+        "data": {
+          "base_url": "Home-Assistant-Adresse",
+          "use_cloud": "Stattdessen Home Assistant Cloud verwenden",
+          "regenerate_secret": "Neues Geheimnis erzeugen"
+        },
+        "data_description": {
+          "base_url": "Nur die Adresse, ohne /api/webhook.",
+          "use_cloud": "Erstellt einen Cloudhook, damit das Telefon ohne Portweiterleitung von überall synchronisiert. Die Adresse oben wird dann nicht verwendet.",
+          "regenerate_secret": "Das Telefon synchronisiert nicht mehr, bis es das neue Geheimnis hat: scanne den neuen Code oder füge das Geheimnis in der App ein."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Das ist keine vollständige Adresse. Sie braucht das Schema und den Host, so wie die Adressleiste deines Browsers sie zeigt: http oder https, dann den Namen oder die IP-Adresse und, falls vorhanden, den Port.",
+      "cloud_not_connected": "Home Assistant Cloud ist nicht verbunden."
+    },
+    "abort": {
+      "already_configured": "Dieses Telefon ist bereits eingerichtet.",
+      "reconfigure_successful": "Gespeichert.\n\n{layout}\n\n{by_hand}"
+    },
+    "create_entry": {
+      "default": "{layout}\n\n{by_hand}"
+    }
+  },
   "options": {
     "step": {
       "init": {
+        "title": "Optionen",
+        "description": "Wähle für jede Art von Messwert, welche Entität an dieses Telefon geht. Lass leer, was nicht gesendet werden soll. Welche davon in Health Connect geschrieben werden, entscheidet die App unter „Empfangen“ in ihrem Tab Health Connect. Nur die Android-App empfängt diese Werte; ein iPhone ignoriert sie. Health Connect hat keinen Datensatz für BMI, Muskelmasse oder Viszeralfett, deshalb werden sie hier nicht angeboten. Messwerte von vor dieser Einrichtung werden nicht gesendet; dafür gibt es die Schaltfläche „Verlauf an Telefon senden“.",
         "data": {
           "min_workout_minutes": "Kürzestes Training (Minuten)"
         },
         "data_description": {
-          "min_workout_minutes": "Trainings, die kürzer sind, zählen weder bei „Letztes Training“ noch bei „Training heute“ und „Training gestern“, zum Beispiel ein kurzer Spaziergang, den das Handy selbst erkannt hat. 0 zählt jedes Training. Die Statistik für Training bleibt unverändert."
+          "min_workout_minutes": "Kürzere Trainings fehlen in „Letztes Training“, „Training heute“ und „Training gestern“, zum Beispiel ein kurzer Spaziergang, den das Telefon selbst erkannt hat. 0 zählt jedes Training. Die Statistik für Training bleibt unverändert."
+        },
+        "sections": {
+          "weight": {
+            "name": "Gewicht",
+            "data": {
+              "entity": "Entität",
+              "time_entity": "Messzeitpunkt (optional)"
+            },
+            "data_description": {
+              "entity": "Ein Sensor, eine Zahl oder eine Zahlenwert-Eingabe mit einer Masseeinheit (kg, g, lb, st, oz). Wird in die Einheit umgerechnet, die Health Connect erwartet.",
+              "time_entity": "Ein Zeitstempel-Sensor, der festhält, wann gemessen wurde, etwa der Zeitpunkt der letzten Messung einer Waage. Ohne ihn gilt der Moment, in dem sich der Wert in Home Assistant geändert hat."
+            }
+          },
+          "height": {
+            "name": "Größe",
+            "data": {
+              "entity": "Entität",
+              "time_entity": "Messzeitpunkt (optional)"
+            },
+            "data_description": {
+              "entity": "Ein Sensor, eine Zahl oder eine Zahlenwert-Eingabe mit einer Längeneinheit (m, cm, ft, in). Wird in die Einheit umgerechnet, die Health Connect erwartet.",
+              "time_entity": "Ein Zeitstempel-Sensor, der festhält, wann gemessen wurde, etwa der Zeitpunkt der letzten Messung einer Waage. Ohne ihn gilt der Moment, in dem sich der Wert in Home Assistant geändert hat."
+            }
+          },
+          "body_fat": {
+            "name": "Körperfettanteil",
+            "data": {
+              "entity": "Entität",
+              "time_entity": "Messzeitpunkt (optional)"
+            },
+            "data_description": {
+              "entity": "Ein Sensor, eine Zahl oder eine Zahlenwert-Eingabe mit einem Prozentwert. Wird in die Einheit umgerechnet, die Health Connect erwartet.",
+              "time_entity": "Ein Zeitstempel-Sensor, der festhält, wann gemessen wurde, etwa der Zeitpunkt der letzten Messung einer Waage. Ohne ihn gilt der Moment, in dem sich der Wert in Home Assistant geändert hat."
+            }
+          },
+          "lean_body_mass": {
+            "name": "Magere Körpermasse",
+            "data": {
+              "entity": "Entität",
+              "time_entity": "Messzeitpunkt (optional)"
+            },
+            "data_description": {
+              "entity": "Ein Sensor, eine Zahl oder eine Zahlenwert-Eingabe mit einer Masseeinheit. Wird in die Einheit umgerechnet, die Health Connect erwartet.",
+              "time_entity": "Ein Zeitstempel-Sensor, der festhält, wann gemessen wurde, etwa der Zeitpunkt der letzten Messung einer Waage. Ohne ihn gilt der Moment, in dem sich der Wert in Home Assistant geändert hat."
+            }
+          },
+          "bone_mass": {
+            "name": "Knochenmasse",
+            "data": {
+              "entity": "Entität",
+              "time_entity": "Messzeitpunkt (optional)"
+            },
+            "data_description": {
+              "entity": "Ein Sensor, eine Zahl oder eine Zahlenwert-Eingabe mit einer Masseeinheit. Wird in die Einheit umgerechnet, die Health Connect erwartet.",
+              "time_entity": "Ein Zeitstempel-Sensor, der festhält, wann gemessen wurde, etwa der Zeitpunkt der letzten Messung einer Waage. Ohne ihn gilt der Moment, in dem sich der Wert in Home Assistant geändert hat."
+            }
+          },
+          "body_water_mass": {
+            "name": "Körperwasser",
+            "data": {
+              "entity": "Entität",
+              "time_entity": "Messzeitpunkt (optional)"
+            },
+            "data_description": {
+              "entity": "Ein Sensor, eine Zahl oder eine Zahlenwert-Eingabe mit einer Masseeinheit. Wird in die Einheit umgerechnet, die Health Connect erwartet.",
+              "time_entity": "Ein Zeitstempel-Sensor, der festhält, wann gemessen wurde, etwa der Zeitpunkt der letzten Messung einer Waage. Ohne ihn gilt der Moment, in dem sich der Wert in Home Assistant geändert hat."
+            }
+          },
+          "blood_pressure": {
+            "name": "Blutdruck",
+            "description": "Systolisch und diastolisch sind hier zwei Entitäten und in Health Connect ein Datensatz. Die beiden werden zusammengeführt, wenn sie sich innerhalb von 90 Sekunden nacheinander ändern.",
+            "data": {
+              "systolic": "Systolisch",
+              "diastolic": "Diastolisch",
+              "time_entity": "Messzeitpunkt (optional)",
+              "body_position": "Körperhaltung",
+              "measurement_location": "Messstelle"
+            },
+            "data_description": {
+              "systolic": "Ein Drucksensor (mmHg oder kPa).",
+              "diastolic": "Ein Drucksensor (mmHg oder kPa).",
+              "time_entity": "Ein Zeitstempel-Sensor, der festhält, wann gemessen wurde, etwa der Zeitpunkt der letzten Messung einer Waage. Ohne ihn gilt der Moment, in dem sich der Wert in Home Assistant geändert hat.",
+              "body_position": "Wird mit jedem Messwert gespeichert; keine Integration liefert sie.",
+              "measurement_location": "Wo die Manschette sitzt; wird mit jedem Messwert gespeichert."
+            }
+          }
         }
       }
+    },
+    "error": {
+      "entity_is_own_sensor": "{entity} ist ein eigener Sensor dieses Telefons. Ihn zurückzusenden wäre nur ein Echo dessen, was das Telefon gesendet hat.",
+      "entity_twice": "{entity} ist zweimal ausgewählt. Jede Entität kann nur zu einem Typ gehören.",
+      "unit_not_mass": "{entity} hat keine Masseeinheit. Ein Gewicht braucht kg, g, lb, st oder oz.",
+      "unit_not_length": "{entity} hat keine Längeneinheit. Eine Größe braucht m, cm, mm, ft oder in.",
+      "unit_not_percentage": "{entity} ist kein Prozentwert. Der Körperfettanteil braucht %.",
+      "unit_not_pressure": "{entity} hat keine Druckeinheit. Blutdruck braucht mmHg oder kPa.",
+      "blood_pressure_incomplete": "Blutdruck braucht sowohl systolisch als auch diastolisch oder keins von beiden.",
+      "time_entity_not_timestamp": "{entity} ist kein Zeitstempel-Sensor. „Messzeitpunkt“ braucht einen Sensor mit der Geräteklasse Zeitstempel."
     }
   },
   "entity": {
     "sensor": {
+      "heart_rate": {
+        "name": "Herzfrequenz"
+      },
+      "resting_heart_rate": {
+        "name": "Ruheherzfrequenz"
+      },
+      "heart_rate_variability": {
+        "name": "Herzfrequenzvariabilität"
+      },
+      "sleep_duration": {
+        "name": "Dauer des letzten Schlafs"
+      },
+      "weight": {
+        "name": "Gewicht"
+      },
+      "blood_pressure_systolic": {
+        "name": "Blutdruck systolisch"
+      },
+      "blood_pressure_diastolic": {
+        "name": "Blutdruck diastolisch"
+      },
+      "blood_glucose": {
+        "name": "Blutzucker"
+      },
+      "oxygen_saturation": {
+        "name": "Blutsauerstoff"
+      },
+      "body_temperature": {
+        "name": "Körpertemperatur"
+      },
+      "skin_temperature_delta": {
+        "name": "Abweichung der Hauttemperatur"
+      },
+      "basal_body_temperature": {
+        "name": "Basaltemperatur"
+      },
+      "respiratory_rate": {
+        "name": "Atemfrequenz"
+      },
+      "hydration": {
+        "name": "Letztes Getränk"
+      },
+      "body_fat": {
+        "name": "Körperfettanteil"
+      },
+      "lean_body_mass": {
+        "name": "Magere Körpermasse"
+      },
+      "bone_mass": {
+        "name": "Knochenmasse"
+      },
+      "body_water_mass": {
+        "name": "Körperwasser"
+      },
+      "basal_metabolic_rate": {
+        "name": "Grundumsatz"
+      },
+      "vo2_max": {
+        "name": "VO2max"
+      },
+      "height": {
+        "name": "Größe"
+      },
+      "steps_today": {
+        "name": "Schritte heute"
+      },
+      "distance_today": {
+        "name": "Distanz heute"
+      },
+      "active_calories_today": {
+        "name": "Aktivitätsenergie heute"
+      },
+      "total_calories_today": {
+        "name": "Gesamtenergie heute"
+      },
       "last_workout": {
         "name": "Letztes Training",
         "state": {
@@ -85,7 +301,102 @@
       },
       "exercise_yesterday": {
         "name": "Training gestern"
+      },
+      "screen_time_today": {
+        "name": "Bildschirmzeit heute"
+      },
+      "screen_time_yesterday": {
+        "name": "Bildschirmzeit gestern"
+      },
+      "screen_time_top_app": {
+        "name": "Meistgenutzte App heute"
+      },
+      "app_screen_time": {
+        "name": "Bildschirmzeit {app}"
+      },
+      "last_health_sync": {
+        "name": "Gesundheitsdaten zuletzt synchronisiert"
+      },
+      "last_screen_time_sync": {
+        "name": "Bildschirmzeit zuletzt synchronisiert"
       }
+    },
+    "button": {
+      "queue_history": {
+        "name": "Verlauf an Telefon senden"
+      }
+    }
+  },
+  "issues": {
+    "writeback_permission_denied": {
+      "title": "{phone} lehnt {type} aus Home Assistant ab",
+      "description": "Die App Life Dashboard Companion auf {phone} hat keine Berechtigung, {type} in Health Connect zu schreiben. Öffne die App, geh im Tab Health Connect zu „Empfangen“ und schalte {type} wieder ein, um die Berechtigung zu erteilen. Die abgelehnten Messwerte werden nicht erneut angeboten; nutze „Verlauf an Telefon senden“, sobald die Berechtigung erteilt ist."
+    },
+    "writeback_unsupported_type": {
+      "title": "{phone} kennt {type} nicht",
+      "description": "Die App Life Dashboard Companion auf {phone} ist zu alt, um {type} in Health Connect zu schreiben. Aktualisiere die App. Die abgelehnten Messwerte werden nicht erneut angeboten; nutze nach dem Update „Verlauf an Telefon senden“."
+    }
+  },
+  "selector": {
+    "body_position": {
+      "options": {
+        "unknown": "Unbekannt",
+        "standing_up": "Stehend",
+        "sitting_down": "Sitzend",
+        "lying_down": "Liegend",
+        "reclining": "Zurückgelehnt"
+      }
+    },
+    "measurement_location": {
+      "options": {
+        "unknown": "Unbekannt",
+        "left_wrist": "Linkes Handgelenk",
+        "right_wrist": "Rechtes Handgelenk",
+        "left_upper_arm": "Linker Oberarm",
+        "right_upper_arm": "Rechter Oberarm"
+      }
+    },
+    "writeback_type": {
+      "options": {
+        "weight": "Gewicht",
+        "height": "Größe",
+        "body_fat": "Körperfettanteil",
+        "lean_body_mass": "Magere Körpermasse",
+        "bone_mass": "Knochenmasse",
+        "body_water_mass": "Körperwasser",
+        "blood_pressure": "Blutdruck"
+      }
+    }
+  },
+  "services": {
+    "queue_history": {
+      "name": "Verlauf an Telefon senden",
+      "description": "Reiht die früheren Messwerte der Entitäten, die einem Telefon zugeordnet sind, aus dem Recorder in die Warteschlange ein, damit die App sie bei ihrer nächsten Synchronisierung in Health Connect schreibt. Höchstens 90 Tage zurück, so lange behält die Warteschlange einen Messwert. Messwerte, die älter als 30 Tage sind, kommen nur an, wenn „Ältere Messwerte annehmen“ in der App eingeschaltet ist. Ein Wert, der gleich geblieben ist, ist im Recorder eine Zeile, deshalb kommen zwei gleiche Wägungen hintereinander als eine zurück; beim Blutdruck übernimmt die Hälfte, die sich nicht geändert hat, ihren letzten bekannten Wert. Ein Messwert, den das Telefon schon geschrieben oder abgelehnt hat, wird nicht erneut eingereiht.",
+      "fields": {
+        "config_entry": {
+          "name": "Telefon",
+          "description": "An welches Telefon gesendet wird. Bei nur einem Telefon nicht nötig."
+        },
+        "days": {
+          "name": "Tage",
+          "description": "Wie weit zurück gelesen wird, ab heute. Höchstens 90."
+        },
+        "types": {
+          "name": "Typen",
+          "description": "Welche Typen gesendet werden. Leer bedeutet alle zugeordneten Typen."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "choose_a_phone": {
+      "message": "Es ist mehr als ein Telefon eingerichtet; wähle eines im Feld „Telefon“."
+    },
+    "phone_not_loaded": {
+      "message": "Dieses Telefon ist nicht eingerichtet oder nicht geladen."
+    },
+    "recorder_missing": {
+      "message": "Der Recorder ist nicht geladen, deshalb gibt es keinen Verlauf zum Lesen."
     }
   }
 }
