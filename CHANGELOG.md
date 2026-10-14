@@ -20,7 +20,7 @@ All notable changes to this integration are documented here. The format follows
   reads as other, with the number still in `type_code`. A workout that crosses midnight
   counts for the part on each day, so a run from 23:30 to 00:30 is half an hour on both.
   The day sensors move on at midnight without waiting for a sync. Like the other sensors,
-  they come with the first workout the phone sends.
+  they come with the first workout the phone sends. Contributed by @ak111pro in #13, a first contribution to the project.
 - **Shortest workout (minutes)** under **Configure**, 0 by default. Workouts that are
   shorter are left out of the three sensors, which is how you keep the short walks the
   phone notices by itself out of them. Changing it takes effect at once for the two day
