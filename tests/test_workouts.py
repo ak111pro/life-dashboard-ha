@@ -399,7 +399,8 @@ def test_a_day_of_short_and_long_sessions() -> None:
     assert yesterday.attributes == {"date": "2026-10-03", "sessions": []}
 
 
-def test_the_state_is_the_sum_of_what_the_list_says() -> None:
+def test_the_state_rounds_the_day_once_and_the_list_each_session() -> None:
+    """Two sessions of 10.5 minutes: the list shows each rounded, the day is 21 minutes."""
     sessions: dict = {}
     _keep(
         sessions,
@@ -408,7 +409,116 @@ def test_the_state_is_the_sum_of_what_the_list_says() -> None:
     )
     [today, _] = day_updates(stored_workouts(sessions), now=NOW, tz=_amsterdam())
     assert [row["minutes"] for row in today.attributes["sessions"]] == [10, 10]
-    assert today.value == 20
+    assert today.value == 21
+
+
+def test_short_sessions_add_up_before_rounding() -> None:
+    """Ten sessions of 40 seconds are 7 minutes, not ten rounded-up minutes."""
+    sessions: dict = {}
+    _keep(
+        sessions,
+        *(
+            _record(
+                "79", f"2026-10-04T05:{m:02d}:00Z", f"2026-10-04T05:{m:02d}:40Z", 40, uuid=f"s{m}"
+            )
+            for m in range(0, 50, 5)
+        ),
+    )
+    [today, _] = day_updates(stored_workouts(sessions), now=NOW, tz=_amsterdam())
+    assert today.value == 7
+
+
+def test_one_run_written_by_two_apps_counts_once() -> None:
+    """The phone and the watch both write the same hour: the day has one hour."""
+    sessions: dict = {}
+    _keep(
+        sessions,
+        _record(
+            "56",
+            "2026-10-04T07:00:00Z",
+            "2026-10-04T08:00:00Z",
+            3600,
+            uuid="phone",
+            source="com.sec.android.app.shealth",
+        ),
+        _record(
+            "56",
+            "2026-10-04T07:00:00Z",
+            "2026-10-04T08:00:00Z",
+            3600,
+            uuid="watch",
+            source="com.strava",
+        ),
+    )
+    [today, _] = day_updates(stored_workouts(sessions), now=NOW, tz=_amsterdam())
+    assert len(today.attributes["sessions"]) == 2
+    assert today.value == 60
+
+
+def test_overlapping_sessions_count_their_union() -> None:
+    """07:00 to 08:00 and 07:30 to 08:30 cover 90 minutes, not 120."""
+    sessions: dict = {}
+    _keep(
+        sessions,
+        _record("56", "2026-10-04T07:00:00Z", "2026-10-04T08:00:00Z", 3600, uuid="a"),
+        _record("79", "2026-10-04T07:30:00Z", "2026-10-04T08:30:00Z", 3600, uuid="b"),
+    )
+    [today, _] = day_updates(stored_workouts(sessions), now=NOW, tz=_amsterdam())
+    assert today.value == 90
+
+
+def _deleted(*uuids: str, type_: str = "exercise") -> list[dict]:
+    return [{"type": type_, "uuid": uuid} for uuid in uuids]
+
+
+def test_a_deleted_workout_no_longer_counts() -> None:
+    sessions: dict = {}
+    _keep(sessions, _record(uuid="run"))
+    payload = {"deleted_records": _deleted("run")}
+    assert keep_sessions(sessions, payload, now=NOW, tz=_amsterdam()) is True
+    assert sessions == {}
+    [today, _] = day_updates(stored_workouts(sessions), now=NOW, tz=_amsterdam())
+    assert today.value == 0
+
+
+def test_an_ios_edit_replaces_the_session() -> None:
+    """HealthKit edits by deleting the old uuid and writing a new one: 60 to 45 minutes is 45."""
+    sessions: dict = {}
+    _keep(sessions, _record(uuid="old"))
+    payload = _payload(
+        _record("56", "2026-10-04T07:00:00Z", "2026-10-04T07:45:00Z", 2700, uuid="new")
+    )
+    payload["deleted_records"] = _deleted("old")
+    keep_sessions(sessions, payload, now=NOW, tz=_amsterdam())
+    assert set(sessions) == {"new"}
+    [today, _] = day_updates(stored_workouts(sessions), now=NOW, tz=_amsterdam())
+    assert today.value == 45
+
+
+def test_a_deleted_uuid_that_comes_back_is_kept() -> None:
+    """Deletions apply before the records, so a uuid written again stays (Fitbit does this)."""
+    sessions: dict = {}
+    _keep(sessions, _record(uuid="same"))
+    payload = _payload(_record(uuid="same"))
+    payload["deleted_records"] = _deleted("same")
+    keep_sessions(sessions, payload, now=NOW, tz=_amsterdam())
+    assert set(sessions) == {"same"}
+
+
+def test_deletions_of_other_types_leave_workouts_alone() -> None:
+    sessions: dict = {}
+    _keep(sessions, _record(uuid="run"))
+    payload = {"deleted_records": _deleted("run", type_="steps") + [{"type": "exercise"}, "junk"]}
+    assert keep_sessions(sessions, payload, now=NOW, tz=_amsterdam()) is False
+    assert set(sessions) == {"run"}
+
+
+def test_an_edit_that_moves_a_session_before_yesterday_drops_it() -> None:
+    sessions: dict = {}
+    _keep(sessions, _record(uuid="moved"))
+    moved = _record("56", "2026-10-01T07:00:00Z", "2026-10-01T08:00:00Z", 3600, uuid="moved")
+    assert _keep(sessions, moved) is True
+    assert sessions == {}
 
 
 def test_a_session_across_midnight_is_split() -> None:

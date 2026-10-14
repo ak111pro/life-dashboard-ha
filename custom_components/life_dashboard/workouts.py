@@ -132,17 +132,36 @@ def keep_sessions(
 ) -> bool:
     """Fold the exercise records of a payload into the stored sessions, by uuid.
 
+    Deletions come first: the apps send a removed workout in `deleted_records`, and on
+    iOS every edit is a deletion of the old uuid plus a record with a new one, so a kept
+    session left in place would count next to its edited copy. A deleted uuid can come back
+    later as a record, which is why the records are applied after the deletions.
+
     Sessions that ended before the start of yesterday are dropped, and never stored when
-    a backfill brings them. Returns whether anything changed.
+    a backfill brings them; an edit that moves a kept session to before yesterday drops it
+    too. Returns whether anything changed.
     """
     records = data.get("exercise")
     changed = False
     cutoff = _cutoff(now, tz)
 
+    deleted = data.get("deleted_records")
+    if isinstance(deleted, list):
+        for entry in deleted:
+            if not isinstance(entry, dict) or entry.get("type") != "exercise":
+                continue
+            uuid = entry.get("uuid")
+            if isinstance(uuid, str) and sessions.pop(uuid, None) is not None:
+                changed = True
+
     if isinstance(records, list):
         for record in records:
             workout = parse_workout(record)
-            if workout is None or workout.end <= cutoff:
+            if workout is None:
+                continue
+            if workout.end <= cutoff:
+                if sessions.pop(identity(workout), None) is not None:
+                    changed = True
                 continue
             row = {
                 "type": workout.code,
@@ -220,6 +239,37 @@ def day_sessions(
     return sorted(rows, key=lambda row: row["start"])
 
 
+def day_minutes(
+    workouts: Iterable[Workout], day: date, *, tz: tzinfo, min_minutes: float = 0
+) -> int:
+    """The minutes of a local day that had a workout going, rounded once.
+
+    Time covered by more than one session counts once: the same run written by the phone
+    and by the watch, or by two apps, is one run. Summing the sessions would count it twice,
+    and rounding each one first would turn ten sessions of 40 seconds into 10 minutes.
+    """
+    day_start = _local_midnight(day, tz)
+    day_end = _local_midnight(day + timedelta(days=1), tz)
+    spans = sorted(
+        (max(workout.start, day_start), min(workout.end, day_end))
+        for workout in workouts
+        if workout.minutes >= min_minutes and workout.end > day_start and workout.start < day_end
+    )
+    total = 0.0
+    current_start: datetime | None = None
+    current_end: datetime | None = None
+    for start, end in spans:
+        if current_end is None or start > current_end:
+            if current_start is not None and current_end is not None:
+                total += (current_end - current_start).total_seconds()
+            current_start, current_end = start, end
+        elif end > current_end:
+            current_end = end
+    if current_start is not None and current_end is not None:
+        total += (current_end - current_start).total_seconds()
+    return round(total / 60)
+
+
 def day_updates(
     workouts: Iterable[Workout], *, now: datetime, tz: tzinfo, min_minutes: float = 0
 ) -> list[SensorUpdate]:
@@ -235,7 +285,7 @@ def day_updates(
         updates.append(
             SensorUpdate(
                 key=key,
-                value=sum(session["minutes"] for session in sessions),
+                value=day_minutes(kept, day, tz=tz, min_minutes=min_minutes),
                 measured_at=_local_midnight(day, tz),
                 attributes={"date": day.isoformat(), "sessions": sessions},
             )
