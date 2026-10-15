@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-15
+
 ### Fixed
 
 - The ledger behind a phone's statistics no longer grows without end. It keeps the 400 days
@@ -283,6 +285,7 @@ First release. Installable from HACS as a custom repository.
 - The app also publishes to MQTT with Discovery, using the same sensor names. Pick
   one of the two, or you get two devices holding the same numbers.
 
+[0.10.1]: https://github.com/owen282000/life-dashboard-ha/releases/tag/0.10.1
 [0.10.0]: https://github.com/owen282000/life-dashboard-ha/releases/tag/0.10.0
 [0.9.0]: https://github.com/owen282000/life-dashboard-ha/releases/tag/0.9.0
 [0.8.0]: https://github.com/owen282000/life-dashboard-ha/releases/tag/0.8.0
