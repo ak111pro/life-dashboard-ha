@@ -41,6 +41,7 @@ from datetime import datetime
 from typing import Any, Final
 
 from .payload import is_own_record, parse_instant
+from .workout_types import segment_type
 
 #: The accumulated series a workout reads, with the field each raw record holds.
 ADDITIVE_SERIES: Final[dict[str, str]] = {
@@ -59,8 +60,8 @@ PACE_KINDS: Final = frozenset({"running", "running_treadmill", "walking", "hikin
 #: The kinds a speed in km/h makes sense for.
 SPEED_KINDS: Final = frozenset({"biking", "biking_stationary"})
 
-#: Health Connect's ExerciseSegment constant for a rest, which is not a set.
-REST_SEGMENT: Final = "44"
+#: Health Connect's ExerciseSegment constants for a pause (39) and a rest (44), which are not sets.
+NOT_A_SET: Final = frozenset({"39", "44"})
 #: At most this many exercises are listed for one workout.
 MAX_EXERCISES: Final = 20
 
@@ -536,7 +537,12 @@ def workout_details(pool: dict[str, Any] | None, workout: Any) -> dict[str, Any]
         details["repetitions"] = workout.repetitions
     if workout.exercises:
         details["exercises"] = [
-            {"type_code": code, "sets": sets, "repetitions": repetitions}
+            {
+                "type": segment_type(code),
+                "type_code": code,
+                "sets": sets,
+                "repetitions": repetitions,
+            }
             for code, sets, repetitions in workout.exercises
         ]
     return details
@@ -549,7 +555,7 @@ def summarize_exercise(record: dict[str, Any]) -> dict[str, Any]:
     """Laps and sets of an exercise record, as the few numbers a workout keeps of them.
 
     laps and lap_meters (the sum of the laps that have a length); sets, the segments that
-    are not a rest, with their repetitions, in total and per exercise type.
+    are not a rest or a pause, with their repetitions, in total and per exercise type.
     """
     summary: dict[str, Any] = {}
     laps = record.get("laps")
@@ -570,7 +576,7 @@ def summarize_exercise(record: dict[str, Any]) -> dict[str, Any]:
                 continue
             code = segment.get("type")
             code = str(code) if isinstance(code, (str, int)) and not isinstance(code, bool) else ""
-            if code == REST_SEGMENT:
+            if code in NOT_A_SET:
                 continue
             reps = segment.get("repetitions")
             reps = reps if isinstance(reps, int) and not isinstance(reps, bool) and reps > 0 else 0

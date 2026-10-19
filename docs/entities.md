@@ -116,7 +116,7 @@ Both minutes sensors carry the day as `date`, and every session of that day in `
 | `heart_rate_avg`, `heart_rate_min`, `heart_rate_max` | bpm, from every sample during the workout |
 | `steps`, `cadence_spm` | Steps during the workout; for running, walking and hiking also steps per minute |
 | `laps` | How many laps the recording app wrote |
-| `sets`, `repetitions`, `exercises` | For a workout with sets: how many (rests not counted), the repetitions in total, and per exercise type its `type_code`, `sets` and `repetitions` |
+| `sets`, `repetitions`, `exercises` | For a workout with sets: how many (rests and pauses not counted), the repetitions in total, and per exercise its `type` (such as `squat`, `bench_press` or `pull_up`, from Health Connect's exercise segment types; `other` for one it does not know), the `type_code` as sent, `sets` and `repetitions` |
 
 ```yaml
 # What the last workout's attributes can look like.

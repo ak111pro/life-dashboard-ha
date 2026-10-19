@@ -21,6 +21,7 @@ from custom_components.life_dashboard.workout_details import (
     windows_of,
     workout_details,
 )
+from custom_components.life_dashboard.workout_types import segment_type
 from custom_components.life_dashboard.workouts import (
     day_updates,
     last_workout_update,
@@ -447,10 +448,47 @@ def test_sets_and_repetitions() -> None:
         "sets": 4,
         "repetitions": 18,
         "exercises": [
-            {"type_code": "51", "sets": 2, "repetitions": 10},
-            {"type_code": "5", "sets": 2, "repetitions": 8},
+            {"type": "squat", "type_code": "51", "sets": 2, "repetitions": 10},
+            {"type": "bench_press", "type_code": "5", "sets": 2, "repetitions": 8},
         ],
     }
+
+
+def test_pauses_are_no_sets_and_unknown_segments_read_as_other() -> None:
+    session = _run(
+        type="70",
+        segments=[
+            {"type": "39", "start_time": _at("07:00:00"), "end_time": _at("07:01:00")},
+            {
+                "type": "9999",
+                "start_time": _at("07:01:00"),
+                "end_time": _at("07:02:00"),
+                "repetitions": 5,
+            },
+            {
+                "type": 42,
+                "start_time": _at("07:02:00"),
+                "end_time": _at("07:03:00"),
+                "repetitions": 6,
+            },
+        ],
+    )
+    details = workout_details({}, parse_workout(session))
+    assert details["sets"] == 2
+    assert details["exercises"] == [
+        {"type": "other", "type_code": "9999", "sets": 1, "repetitions": 5},
+        {"type": "pull_up", "type_code": "42", "sets": 1, "repetitions": 6},
+    ]
+
+
+def test_segment_names_follow_health_connect() -> None:
+    assert segment_type("51") == "squat"
+    assert segment_type("5") == "bench_press"
+    assert segment_type(42) == "pull_up"
+    assert segment_type("11") == "deadlift"
+    assert segment_type("0") == "other"
+    assert segment_type("") == "other"
+    assert segment_type(True) == "other"
 
 
 def test_only_rests_are_no_sets() -> None:
